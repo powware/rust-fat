@@ -28,6 +28,7 @@ const ROOT_DIRECTORY: FileAttr = FileAttr {
 
 struct Entry {
     name: OsString,
+    parent: u64,
     children: Vec<u64>,
     attr: FileAttr,
 }
@@ -51,6 +52,7 @@ impl Filesystem for HelloFS {
         let ino = (self.entries.len() + 1) as u64;
         self.entries.push(Some(Entry {
             name: OsString::from(name),
+            parent: parent,
             children: Vec::new(),
             attr: FileAttr {
                 ino: ino as u64,
@@ -84,6 +86,27 @@ impl Filesystem for HelloFS {
 
     fn lookup(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry) {
         println!("lookup: parent:{parent:?} name:{name:?}");
+
+        if name == ".." {
+            if parent > 0 {
+                let parent = self.entries[(parent - 1) as usize].as_ref().unwrap();
+                if name == parent.name {
+                    reply.entry(&TTL, &parent.attr, 0);
+                    return;
+                }
+            } else {
+                reply.error(ENOENT);
+                return;
+            }
+        } else if name == "." {
+            reply.entry(
+                &TTL,
+                &self.entries[(parent - 1) as usize].as_ref().unwrap().attr,
+                0,
+            );
+            return;
+        }
+
         for ino in &self.entries[(parent - 1) as usize]
             .as_ref()
             .unwrap()
@@ -150,6 +173,7 @@ fn main() {
 
     hello.entries.push(Some(Entry {
         name: OsString::from("/"),
+        parent: 0,
         children: Vec::new(),
         attr: FileAttr {
             ino: 1,
