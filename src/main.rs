@@ -149,7 +149,7 @@ fn main() {
     };
 
     hello.entries.push(Some(Entry {
-        name: OsString::from("root"),
+        name: OsString::from("/"),
         children: Vec::new(),
         attr: FileAttr {
             ino: 1,
